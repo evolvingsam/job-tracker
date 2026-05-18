@@ -1,5 +1,6 @@
 import os
 import json
+import subprocess
 import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -200,3 +201,16 @@ def generate_prep(payload: PrepRequest):
         traceback.print_exc()
         print("--------------------------------------\n")
         raise HTTPException(status_code=500, detail=f"Prep Pipeline Failure: {str(e)}")
+
+@app.on_event("startup")
+async def download_playwright_binaries():
+    """
+    Ensures Playwright Chromium binaries are downloaded inside the container
+    automatically when the FastAPI server boots up.
+    """
+    try:
+        print("[System Startup] Verifying Playwright binary allocations...")
+        subprocess.run(["python", "-m", "playwright", "install", "chromium"], check=True)
+        print("[System Startup] Playwright Chromium binaries installed successfully.")
+    except Exception as e:
+        print(f"[System Startup Warning] Automatic binary download skipped or failed: {e}")
