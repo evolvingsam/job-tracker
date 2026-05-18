@@ -184,15 +184,37 @@ def generate_prep(payload: PrepRequest):
             "Do not include markdown formatting or backticks."
         )
         
-        data_block = f"JOB DESCRIPTION:\n{payload.job_description}\n\nMISSING SKILL GAPS:\n{', '.join(payload.missing_skills)}"
-        
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=f"{instruction_block}\n\n{data_block}"
         )
         
         raw_output = response.text.strip().lstrip("`json").lstrip("`").rstrip("`").strip()
-        parsed_data = json.loads(raw_output)
+        
+        # --- NEW SANITIZATION LAYER ---
+        # This cleans up unescaped control characters (like raw tabs/newlines inside strings)
+        # and replaces literal newlines with escaped '\n' characters so the JSON parser doesn't choke.
+        sanitized_output = raw_output.replace('\n', '\\n').replace('\t', '\\t')
+        
+        # Crucial: If Gemini wrapped the whole thing in outer newlines during cleaning, 
+        # we fix the structural JSON brackets back to clean state.
+        if sanitized_output.startswith('\\n'):
+            sanitized_output = sanitized_output[2:]
+        if sanitized_output.endswith('\\n'):
+            sanitized_output = sanitized_output[:-2]
+            
+        # If the double-escaping messes up structural brackets, we normalize them
+        sanitized_output = sanitized_output.replace('{\\n', '{').replace('\\n}', '}').replace('\\n"', '"')
+        
+        try:
+            parsed_data = json.loads(raw_output) # Try raw first
+        except json.JSONDecodeError:
+            # Fallback to a cleaner regex/replace pass if control characters are broken
+            import re
+            # Removes actual ASCII control characters 0-31
+            clean_str = re.sub(r'[\x00-\x1F\x7F]', '', raw_output)
+            parsed_data = json.loads(clean_str)
+        # ------------------------------
         
         return parsed_data
 
