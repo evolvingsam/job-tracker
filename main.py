@@ -127,7 +127,14 @@ async def auto_apply(payload: AutoApplyRequest):
             
             print(f"[Agent] Navigating to target job portal: {payload.target_url}")
             # ... rest of your playwright logic remains exactly the same ...
-            await page.goto(payload.target_url, timeout=45000)
+            print(f"[Agent] Navigating to target job portal: {payload.target_url}")
+            
+            try:
+                await page.goto(payload.target_url, timeout=45000)
+            except Exception as e:
+                print(f"[Agent Warning] Could not reach URL: {payload.target_url}")
+                await browser.close()
+                raise HTTPException(status_code=400, detail="Could not load the target URL. Please verify the link is active and try again.")
             
             # Semantic Form Identification Engine using Playwright Locators
             print("[Agent] Analyzing DOM elements and injecting structured profile strings...")
