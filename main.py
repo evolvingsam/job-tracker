@@ -116,16 +116,17 @@ def analyze_job(payload: JobApplicationRequest):
 async def auto_apply(payload: AutoApplyRequest):
     """
     HOT SPOT 1: The 'Ghost Browser' Autonomous Submitter.
-    Launches a visible browser locally on your laptop to type form inputs automatically.
+    Launches a headless browser in the cloud to process form inputs.
     """
     try:
         async with async_playwright() as p:
-            # Crucial for Hackathon Demos: headless=False + slow_mo allows judges to see the typing live!
-            browser = await p.chromium.launch(headless=False, slow_mo=400)
+            # FIX: Set headless=True for Docker/Cloud stability
+            browser = await p.chromium.launch(headless=True)
             context = await browser.new_context(viewport={"width": 1280, "height": 800})
             page = await context.new_page()
             
             print(f"[Agent] Navigating to target job portal: {payload.target_url}")
+            # ... rest of your playwright logic remains exactly the same ...
             await page.goto(payload.target_url, timeout=45000)
             
             # Semantic Form Identification Engine using Playwright Locators
